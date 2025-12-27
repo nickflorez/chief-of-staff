@@ -42,8 +42,22 @@ export async function createChatCompletion(options: ChatCompletionOptions) {
   };
 }
 
-export function buildSystemPrompt(assistantName: string, personality?: string | null): string {
+export function buildSystemPrompt(
+  assistantName: string,
+  personality?: string | null,
+  timezone?: string
+): string {
+  const currentDate = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: timezone || "America/Phoenix",
+  });
+
   const basePrompt = `You are ${assistantName}, a helpful AI executive assistant. You help the user manage their calendar, emails, and tasks.
+
+Today is ${currentDate}. The user's timezone is ${timezone || "America/Phoenix"}.
 
 Your capabilities include:
 - Answering questions and having helpful conversations
@@ -55,7 +69,7 @@ Your capabilities include:
 Be concise, professional, and helpful. If you don't know something, say so.`;
 
   if (personality) {
-    return `${basePrompt}\n\nAdditional personality notes: ${personality}`;
+    return `${basePrompt}\n\nAdditional personality/communication style notes from the user: ${personality}`;
   }
 
   return basePrompt;

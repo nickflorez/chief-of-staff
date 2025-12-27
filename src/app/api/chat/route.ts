@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { createChatCompletion, buildSystemPrompt } from "@/lib/ai/claude";
+import { createServerSupabaseClient } from "@/lib/db/supabase";
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,11 +13,23 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { message, history = [], assistantName = "Chief of Staff", personality } = body;
+    const { message, history = [] } = body;
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
     }
+
+    // Get user settings from database
+    const supabase = createServerSupabaseClient();
+    const { data: settings } = await supabase
+      .from("user_settings")
+      .select("assistant_name, assistant_personality, timezone")
+      .eq("clerk_user_id", userId)
+      .single();
+
+    const assistantName = settings?.assistant_name || "Chief of Staff";
+    const personality = settings?.assistant_personality || null;
+    const timezone = settings?.timezone || "America/Phoenix";
 
     // Build conversation history
     const messages = [
@@ -27,8 +40,8 @@ export async function POST(request: NextRequest) {
       { role: "user" as const, content: message },
     ];
 
-    // Get AI response
-    const systemPrompt = buildSystemPrompt(assistantName, personality);
+    // Get AI response with user's custom settings
+    const systemPrompt = buildSystemPrompt(assistantName, personality, timezone);
     const response = await createChatCompletion({
       messages,
       systemPrompt,

@@ -17,12 +17,10 @@ interface Message {
 
 interface ChatPanelProps {
   assistantName?: string;
-  assistantPersonality?: string | null;
 }
 
 export function ChatPanel({
   assistantName = "Chief of Staff",
-  assistantPersonality = null
 }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -71,8 +69,6 @@ export function ChatPanel({
         body: JSON.stringify({
           message: userMessage.content,
           history: messages.map((m) => ({ role: m.role, content: m.content })),
-          assistantName,
-          personality: assistantPersonality,
         }),
       });
 
