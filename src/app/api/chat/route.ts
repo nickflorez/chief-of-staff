@@ -23,7 +23,10 @@ const MAX_TOOL_ITERATIONS = 10;
 /**
  * Generate a title from the first user message
  */
-function generateTitleFromMessage(message: string): string {
+function generateTitleFromMessage(message: string, hasImages: boolean): string {
+  if (!message && hasImages) {
+    return "Image conversation";
+  }
   const truncated = message.slice(0, 50);
   return message.length > 50 ? `${truncated}...` : truncated;
 }
@@ -38,10 +41,11 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { message, history = [], sessionId: providedSessionId } = body;
+    const { message, images = [], history = [], sessionId: providedSessionId } = body;
 
-    if (!message || typeof message !== "string") {
-      return NextResponse.json({ error: "Message is required" }, { status: 400 });
+    // Allow empty message if images are provided
+    if ((!message || typeof message !== "string") && (!images || images.length === 0)) {
+      return NextResponse.json({ error: "Message or images required" }, { status: 400 });
     }
 
     const supabase = createServerSupabaseClient();
@@ -62,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     if (!sessionId) {
       // Create a new session
-      const title = generateTitleFromMessage(message);
+      const title = generateTitleFromMessage(message || "", images && images.length > 0);
       const { data: newSession, error: sessionError } = await supabase
         .from("chat_sessions")
         .insert({
@@ -118,8 +122,43 @@ export async function POST(request: NextRequest) {
         role: msg.role as "user" | "assistant",
         content: msg.content,
       })),
-      { role: "user" as const, content: message },
     ];
+
+    // Build user message with optional images
+    if (images && images.length > 0) {
+      // Create content array with images and text
+      const userContent: Anthropic.Messages.ContentBlockParam[] = [];
+
+      // Add images first
+      for (const img of images as Array<{ data: string; mediaType: string }>) {
+        userContent.push({
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: img.mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+            data: img.data,
+          },
+        });
+      }
+
+      // Add text message if provided
+      if (message && message.trim()) {
+        userContent.push({
+          type: "text",
+          text: message,
+        });
+      } else {
+        // Add a default prompt if only images are provided
+        userContent.push({
+          type: "text",
+          text: "What do you see in this image?",
+        });
+      }
+
+      messages.push({ role: "user", content: userContent });
+    } else {
+      messages.push({ role: "user", content: message });
+    }
 
     // Track total token usage
     let totalInputTokens = 0;
@@ -194,12 +233,19 @@ export async function POST(request: NextRequest) {
     const finalText = extractTextFromContent(currentContent);
 
     // Save user message to database
+    // Note: We save the text content and note if images were attached
+    const userMessageContent = images && images.length > 0
+      ? message
+        ? `[${images.length} image(s) attached]\n\n${message}`
+        : `[${images.length} image(s) attached]`
+      : message;
+
     const { error: userMsgError } = await supabase
       .from("chat_messages")
       .insert({
         session_id: sessionId,
         role: "user",
-        content: message,
+        content: userMessageContent,
       });
 
     if (userMsgError) {
