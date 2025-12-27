@@ -1,7 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { createChatCompletion, buildSystemPrompt } from "@/lib/ai/claude";
+import Anthropic from "@anthropic-ai/sdk";
+import {
+  createChatCompletionWithTools,
+  buildSystemPrompt,
+  extractTextFromContent,
+  hasToolUse,
+  extractToolUseBlocks,
+  MessageContent,
+} from "@/lib/ai/claude";
 import { createServerSupabaseClient } from "@/lib/db/supabase";
+import {
+  getAvailableTools,
+  getIntegrationsSummary,
+  handleToolCall,
+  formatToolResultForClaude,
+} from "@/lib/ai/tools";
+
+// Maximum number of tool use iterations to prevent infinite loops
+const MAX_TOOL_ITERATIONS = 10;
 
 /**
  * Generate a title from the first user message
@@ -81,8 +98,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Build conversation history
-    const messages = [
+    // Get available tools based on user's integrations
+    const [tools, integrationsSummary] = await Promise.all([
+      getAvailableTools(userId),
+      getIntegrationsSummary(userId),
+    ]);
+
+    // Build system prompt with integration info
+    const systemPrompt = buildSystemPrompt(
+      assistantName,
+      personality,
+      timezone,
+      integrationsSummary
+    );
+
+    // Build conversation history in Anthropic format
+    const messages: Anthropic.Messages.MessageParam[] = [
       ...history.map((msg: { role: string; content: string }) => ({
         role: msg.role as "user" | "assistant",
         content: msg.content,
@@ -90,13 +121,77 @@ export async function POST(request: NextRequest) {
       { role: "user" as const, content: message },
     ];
 
-    // Get AI response with user's custom settings
-    const systemPrompt = buildSystemPrompt(assistantName, personality, timezone);
-    const response = await createChatCompletion({
+    // Track total token usage
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+
+    // Get initial AI response
+    let response = await createChatCompletionWithTools({
       messages,
       systemPrompt,
+      tools,
       maxTokens: 4096,
     });
+
+    totalInputTokens += response.usage.inputTokens;
+    totalOutputTokens += response.usage.outputTokens;
+
+    // Handle tool use in a loop
+    let iterations = 0;
+    let currentMessages = [...messages];
+    let currentContent = response.content;
+
+    while (hasToolUse(currentContent) && iterations < MAX_TOOL_ITERATIONS) {
+      iterations++;
+
+      // Extract tool use blocks
+      const toolUseBlocks = extractToolUseBlocks(currentContent);
+
+      // Add assistant message with tool use to conversation
+      currentMessages.push({
+        role: "assistant",
+        content: currentContent,
+      });
+
+      // Process each tool call and collect results
+      const toolResults: Anthropic.Messages.ToolResultBlockParam[] = await Promise.all(
+        toolUseBlocks.map(async (toolUse) => {
+          const result = await handleToolCall(
+            userId,
+            toolUse.name,
+            toolUse.input as Record<string, unknown>
+          );
+
+          return {
+            type: "tool_result" as const,
+            tool_use_id: toolUse.id,
+            content: formatToolResultForClaude(result),
+            is_error: !result.success,
+          };
+        })
+      );
+
+      // Add tool results to conversation
+      currentMessages.push({
+        role: "user",
+        content: toolResults,
+      });
+
+      // Get next response
+      response = await createChatCompletionWithTools({
+        messages: currentMessages,
+        systemPrompt,
+        tools,
+        maxTokens: 4096,
+      });
+
+      totalInputTokens += response.usage.inputTokens;
+      totalOutputTokens += response.usage.outputTokens;
+      currentContent = response.content;
+    }
+
+    // Extract final text response
+    const finalText = extractTextFromContent(currentContent);
 
     // Save user message to database
     const { error: userMsgError } = await supabase
@@ -118,9 +213,9 @@ export async function POST(request: NextRequest) {
       .insert({
         session_id: sessionId,
         role: "assistant",
-        content: response.content,
-        tokens_in: response.usage?.inputTokens || null,
-        tokens_out: response.usage?.outputTokens || null,
+        content: finalText,
+        tokens_in: totalInputTokens,
+        tokens_out: totalOutputTokens,
       });
 
     if (assistantMsgError) {
@@ -134,11 +229,30 @@ export async function POST(request: NextRequest) {
       .update({ updated_at: new Date().toISOString() })
       .eq("id", sessionId);
 
-    return NextResponse.json({
-      content: response.content,
-      usage: response.usage,
+    // Build response with tool use info if applicable
+    const responseData: {
+      content: string;
+      usage: { inputTokens: number; outputTokens: number };
+      sessionId: string;
+      toolsUsed?: string[];
+    } = {
+      content: finalText,
+      usage: {
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
+      },
       sessionId,
-    });
+    };
+
+    // Include which tools were used (for debugging/transparency)
+    if (iterations > 0) {
+      const allToolUses = extractAllToolUses(currentMessages);
+      if (allToolUses.length > 0) {
+        responseData.toolsUsed = allToolUses;
+      }
+    }
+
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error("Chat API error:", error);
 
@@ -157,4 +271,23 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Extract all tool names used from the conversation
+ */
+function extractAllToolUses(messages: Anthropic.Messages.MessageParam[]): string[] {
+  const toolNames: string[] = [];
+
+  for (const msg of messages) {
+    if (msg.role === "assistant" && Array.isArray(msg.content)) {
+      for (const block of msg.content as MessageContent[]) {
+        if (block.type === "tool_use") {
+          toolNames.push(block.name);
+        }
+      }
+    }
+  }
+
+  return [...new Set(toolNames)]; // Return unique tool names
 }
