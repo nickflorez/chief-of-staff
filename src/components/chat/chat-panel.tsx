@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Loader2, Bot, User } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Send, Loader2, Bot, User, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,14 +16,39 @@ interface Message {
   timestamp: Date;
 }
 
+interface InitialMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+}
+
 interface ChatPanelProps {
   assistantName?: string;
+  initialSessionId?: string;
+  initialMessages?: InitialMessage[];
 }
 
 export function ChatPanel({
   assistantName = "Chief of Staff",
+  initialSessionId,
+  initialMessages = [],
 }: ChatPanelProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const sessionFromUrl = searchParams.get("session");
+
+  const [sessionId, setSessionId] = useState<string | null>(
+    initialSessionId || sessionFromUrl || null
+  );
+  const [messages, setMessages] = useState<Message[]>(() =>
+    initialMessages.map((m) => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      timestamp: new Date(m.created_at),
+    }))
+  );
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +95,7 @@ export function ChatPanel({
         body: JSON.stringify({
           message: userMessage.content,
           history: messages.map((m) => ({ role: m.role, content: m.content })),
+          sessionId,
         }),
       });
 
@@ -78,6 +105,13 @@ export function ChatPanel({
       }
 
       const data = await response.json();
+
+      // Update sessionId if a new session was created
+      if (data.sessionId && !sessionId) {
+        setSessionId(data.sessionId);
+        // Update URL without full navigation
+        router.replace(`/chat?session=${data.sessionId}`, { scroll: false });
+      }
 
       const assistantMessage: Message = {
         id: crypto.randomUUID(),
@@ -94,6 +128,13 @@ export function ChatPanel({
     }
   };
 
+  const handleNewConversation = () => {
+    setMessages([]);
+    setSessionId(null);
+    setError(null);
+    router.replace("/chat", { scroll: false });
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -104,16 +145,29 @@ export function ChatPanel({
   return (
     <div className="flex flex-col h-[calc(100vh-12rem)] bg-white rounded-xl border border-gray-200 shadow-sm">
       {/* Header */}
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200">
-        <Avatar className="h-10 w-10 bg-blue-100">
-          <AvatarFallback className="bg-blue-100 text-blue-600">
-            <Bot className="h-5 w-5" />
-          </AvatarFallback>
-        </Avatar>
-        <div>
-          <h2 className="font-semibold text-gray-900">{assistantName}</h2>
-          <p className="text-sm text-gray-500">Your AI Executive Assistant</p>
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-10 w-10 bg-blue-100">
+            <AvatarFallback className="bg-blue-100 text-blue-600">
+              <Bot className="h-5 w-5" />
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <h2 className="font-semibold text-gray-900">{assistantName}</h2>
+            <p className="text-sm text-gray-500">Your AI Executive Assistant</p>
+          </div>
         </div>
+        {messages.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleNewConversation}
+            className="gap-2"
+          >
+            <RotateCcw className="h-4 w-4" />
+            New Chat
+          </Button>
+        )}
       </div>
 
       {/* Messages */}
