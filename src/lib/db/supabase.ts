@@ -55,3 +55,16 @@ export interface UserMemory {
   created_at: string;
   updated_at: string;
 }
+
+export interface UserIntegration {
+  id: string;
+  clerk_user_id: string;
+  provider: "google" | "asana";
+  access_token: string;
+  refresh_token: string | null;
+  token_expires_at: string | null;
+  scopes: string[];
+  connected_email: string | null;
+  created_at: string;
+  updated_at: string;
+}
