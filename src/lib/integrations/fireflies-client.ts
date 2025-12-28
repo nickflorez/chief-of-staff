@@ -121,7 +121,8 @@ export async function getTranscript(
   apiKey: string,
   transcriptId: string
 ): Promise<FirefliesTranscriptDetail | null> {
-  const query = `query Transcript($transcriptId: String!) { transcript(id: $transcriptId) { id title date duration participants host_email organizer_email transcript_url audio_url summary { overview action_items keywords } sentences { speaker_name text start_time } } }`;
+  // Using regular string to avoid any template literal bundling issues
+  const query = "query Transcript($transcriptId: String!) { transcript(id: $transcriptId) { id title date duration participants host_email organizer_email transcript_url audio_url summary { overview action_items keywords } sentences { speaker_name text start_time } } }";
 
   const data = await firefliesQuery<{ transcript: FirefliesTranscriptDetail | null }>(
     apiKey,
