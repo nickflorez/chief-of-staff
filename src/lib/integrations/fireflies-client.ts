@@ -20,12 +20,11 @@ export interface FirefliesTranscript {
 }
 
 export interface FirefliesTranscriptDetail extends FirefliesTranscript {
-  summary: {
-    overview: string;
-    action_items: string[];
-    keywords: string[];
-    short_summary: string;
-  } | null;
+  // Summary fields are directly on transcript, not nested
+  overview: string | null;
+  action_items: string[] | null;
+  keywords: string[] | null;
+  outline: string[] | null;
   sentences: Array<{
     speaker_name: string;
     text: string;
@@ -125,12 +124,10 @@ export async function getTranscript(
         organizer_email
         transcript_url
         audio_url
-        summary {
-          overview
-          action_items
-          keywords
-          short_summary
-        }
+        overview
+        action_items
+        keywords
+        outline
         sentences {
           speaker_name
           text
