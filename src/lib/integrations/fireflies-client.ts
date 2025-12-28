@@ -45,20 +45,28 @@ export async function firefliesQuery<T>(
   query: string,
   variables?: Record<string, unknown>
 ): Promise<T> {
+  const body = JSON.stringify({ query, variables });
+
+  console.log("Fireflies request body:", body);
+
   const response = await fetch(FIREFLIES_ENDPOINT, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({ query, variables }),
+    body,
   });
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Fireflies HTTP error:", response.status, errorText);
     throw new Error(`Fireflies API error: ${response.status} ${response.statusText}`);
   }
 
   const result = await response.json();
+
+  console.log("Fireflies response:", JSON.stringify(result, null, 2).substring(0, 500));
 
   if (result.errors && result.errors.length > 0) {
     const error = result.errors[0];
