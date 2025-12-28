@@ -130,11 +130,21 @@ function formatTranscriptDetail(transcript: FirefliesTranscriptDetail): string {
 ${transcript.summary.overview || "No summary available."}
 `;
 
-    if (transcript.summary.action_items && transcript.summary.action_items.length > 0) {
-      result += `
+    // action_items can be either a string (with newlines) or an array
+    const actionItems = transcript.summary.action_items;
+    if (actionItems) {
+      if (typeof actionItems === "string") {
+        // API returns action items as a single string
+        result += `
 ## Action Items
-${transcript.summary.action_items.map((item) => `- ${item}`).join("\n")}
+${actionItems}
 `;
+      } else if (Array.isArray(actionItems) && actionItems.length > 0) {
+        result += `
+## Action Items
+${actionItems.map((item) => `- ${item}`).join("\n")}
+`;
+      }
     }
 
     if (transcript.summary.keywords && transcript.summary.keywords.length > 0) {
@@ -151,7 +161,7 @@ ${transcript.summary.keywords.join(", ")}
     result += `
 ## Transcript Preview (first ${firstSentences.length} statements)
 ${firstSentences
-  .map((s) => `**${s.speaker_name}:** ${s.text}`)
+  .map((s) => `**${s.speaker_name || "Unknown"}:** ${s.text}`)
   .join("\n")}
 `;
 

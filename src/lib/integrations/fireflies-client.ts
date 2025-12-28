@@ -22,11 +22,12 @@ export interface FirefliesTranscript {
 export interface FirefliesTranscriptDetail extends FirefliesTranscript {
   summary: {
     overview: string | null;
-    action_items: string[] | null;
+    // API returns action_items as a single string with newlines, not an array
+    action_items: string | string[] | null;
     keywords: string[] | null;
   } | null;
   sentences: Array<{
-    speaker_name: string;
+    speaker_name: string | null;
     text: string;
     start_time: number;
   }>;
