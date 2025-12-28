@@ -127,7 +127,7 @@ function formatTranscriptDetail(transcript: FirefliesTranscriptDetail): string {
   if (transcript.summary) {
     result += `
 ## Summary
-${transcript.summary.overview || transcript.summary.short_summary || "No summary available."}
+${transcript.summary.overview || "No summary available."}
 `;
 
     if (transcript.summary.action_items && transcript.summary.action_items.length > 0) {

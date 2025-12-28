@@ -24,7 +24,6 @@ export interface FirefliesTranscriptDetail extends FirefliesTranscript {
     overview: string | null;
     action_items: string[] | null;
     keywords: string[] | null;
-    short_summary: string | null;
   } | null;
   sentences: Array<{
     speaker_name: string;
@@ -63,6 +62,7 @@ export async function firefliesQuery<T>(
 
   if (result.errors && result.errors.length > 0) {
     const error = result.errors[0];
+    console.error("Fireflies GraphQL error:", JSON.stringify(result.errors, null, 2));
     throw new Error(error.message || "Fireflies API error");
   }
 
@@ -129,7 +129,6 @@ export async function getTranscript(
           overview
           action_items
           keywords
-          short_summary
         }
         sentences {
           speaker_name
