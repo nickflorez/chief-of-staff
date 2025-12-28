@@ -2,8 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle2, Link2, Calendar, Mail, ListTodo } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Loader2, CheckCircle2, Link2, Calendar, ListTodo, Mic, ExternalLink, Eye, EyeOff } from "lucide-react";
 import { disconnectIntegration, IntegrationStatus } from "@/app/actions/integrations";
+import { saveFirefliesApiKey, removeFirefliesApiKey } from "@/app/actions/settings";
 
 interface IntegrationsListProps {
   integrations: IntegrationStatus[];
@@ -11,6 +13,7 @@ interface IntegrationsListProps {
     google: boolean;
     asana: boolean;
   };
+  firefliesConnected: boolean;
 }
 
 const INTEGRATION_CONFIG = {
@@ -31,6 +34,7 @@ const INTEGRATION_CONFIG = {
 export function IntegrationsList({
   integrations,
   oauthAvailability,
+  firefliesConnected,
 }: IntegrationsListProps) {
   return (
     <div className="space-y-4">
@@ -41,6 +45,7 @@ export function IntegrationsList({
           isAvailable={oauthAvailability[integration.provider]}
         />
       ))}
+      <FirefliesCard isConnected={firefliesConnected} />
     </div>
   );
 }
@@ -121,6 +126,136 @@ function IntegrationCard({
           </Button>
         )}
       </div>
+    </div>
+  );
+}
+
+function FirefliesCard({ isConnected }: { isConnected: boolean }) {
+  const [isPending, startTransition] = useTransition();
+  const [apiKey, setApiKey] = useState("");
+  const [showKey, setShowKey] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [connected, setConnected] = useState(isConnected);
+
+  const handleSave = () => {
+    if (!apiKey.trim()) {
+      setError("Please enter your API key");
+      return;
+    }
+
+    setError(null);
+    setSuccess(false);
+    startTransition(async () => {
+      const result = await saveFirefliesApiKey(apiKey.trim());
+      if (result.success) {
+        setSuccess(true);
+        setConnected(true);
+        setApiKey("");
+        setTimeout(() => setSuccess(false), 3000);
+      } else {
+        setError(result.error || "Failed to save API key");
+      }
+    });
+  };
+
+  const handleDisconnect = () => {
+    setError(null);
+    startTransition(async () => {
+      const result = await removeFirefliesApiKey();
+      if (result.success) {
+        setConnected(false);
+      } else {
+        setError(result.error || "Failed to disconnect");
+      }
+    });
+  };
+
+  return (
+    <div className="flex items-start justify-between py-4 border-b border-gray-100 last:border-0">
+      <div className="flex items-start gap-3">
+        <div className="p-2 bg-purple-100 rounded-lg">
+          <Mic className="h-5 w-5 text-purple-600" />
+        </div>
+        <div className="flex-1">
+          <h3 className="font-medium text-gray-900">Fireflies.ai</h3>
+          <p className="text-sm text-gray-500">Access AI-powered meeting transcripts</p>
+
+          {connected ? (
+            <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+              <CheckCircle2 className="h-3 w-3" />
+              Connected
+            </p>
+          ) : (
+            <div className="mt-3 space-y-2">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    type={showKey ? "text" : "password"}
+                    placeholder="Enter your Fireflies API key"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    className="pr-10 text-sm"
+                    disabled={isPending}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowKey(!showKey)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={isPending || !apiKey.trim()}
+                >
+                  {isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Save"
+                  )}
+                </Button>
+              </div>
+              <a
+                href="https://app.fireflies.ai/integrations/custom/fireflies"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+              >
+                Get your API key from Fireflies
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          )}
+
+          {error && (
+            <p className="text-xs text-red-600 mt-1">{error}</p>
+          )}
+          {success && (
+            <p className="text-xs text-green-600 mt-1">API key saved successfully!</p>
+          )}
+        </div>
+      </div>
+
+      {connected && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDisconnect}
+          disabled={isPending}
+        >
+          {isPending ? (
+            <>
+              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+              Disconnecting...
+            </>
+          ) : (
+            "Disconnect"
+          )}
+        </Button>
+      )}
     </div>
   );
 }

@@ -24,6 +24,7 @@ export interface UserSettings {
   assistant_name: string;
   assistant_personality: string | null;
   timezone: string;
+  fireflies_api_key: string | null;  // Encrypted
   created_at: string;
   updated_at: string;
 }

@@ -5,16 +5,24 @@ import { createServerSupabaseClient } from "@/lib/db/supabase";
 import { gmailToolDefinitions, handleGmailTool } from "./gmail-tools";
 import { calendarToolDefinitions, handleCalendarTool } from "./calendar-tools";
 import { asanaToolDefinitions, handleAsanaTool } from "./asana-tools";
+import {
+  firefliesToolDefinitions,
+  handleFirefliesTool,
+  FIREFLIES_TOOL_NAMES,
+} from "./fireflies-tools";
+import { hasFirefliesConnection } from "@/app/actions/settings";
 
 // Re-export all tools
 export { gmailToolDefinitions, handleGmailTool } from "./gmail-tools";
 export { calendarToolDefinitions, handleCalendarTool } from "./calendar-tools";
 export { asanaToolDefinitions, handleAsanaTool } from "./asana-tools";
+export { firefliesToolDefinitions, handleFirefliesTool } from "./fireflies-tools";
 
 // Types
 export interface UserIntegrationStatus {
   google: boolean;
   asana: boolean;
+  fireflies: boolean;
   googleScopes: string[];
 }
 
@@ -47,6 +55,7 @@ export async function getUserIntegrationStatus(
 ): Promise<UserIntegrationStatus> {
   const supabase = createServerSupabaseClient();
 
+  // Check OAuth integrations
   const { data: integrations } = await supabase
     .from("user_integrations")
     .select("provider, scopes")
@@ -55,9 +64,13 @@ export async function getUserIntegrationStatus(
   const googleIntegration = integrations?.find((i) => i.provider === "google");
   const asanaIntegration = integrations?.find((i) => i.provider === "asana");
 
+  // Check Fireflies API key connection
+  const hasFireflies = await hasFirefliesConnection();
+
   return {
     google: !!googleIntegration,
     asana: !!asanaIntegration,
+    fireflies: hasFireflies,
     googleScopes: googleIntegration?.scopes || [],
   };
 }
@@ -102,6 +115,10 @@ export async function getAvailableTools(
     tools.push(...asanaToolDefinitions);
   }
 
+  if (status.fireflies) {
+    tools.push(...firefliesToolDefinitions);
+  }
+
   return tools;
 }
 
@@ -124,6 +141,10 @@ export async function handleToolCall(
 
   if (ASANA_TOOLS.includes(toolName)) {
     return handleAsanaTool(userId, toolName, input);
+  }
+
+  if (FIREFLIES_TOOL_NAMES.includes(toolName as typeof FIREFLIES_TOOL_NAMES[number])) {
+    return handleFirefliesTool(userId, toolName, input);
   }
 
   return {
@@ -168,6 +189,11 @@ export async function getIntegrationsSummary(userId: string): Promise<string> {
   if (status.asana) {
     capabilities.push("- View and manage Asana tasks");
     capabilities.push("- Create new tasks and mark tasks complete");
+  }
+
+  if (status.fireflies) {
+    capabilities.push("- Access Fireflies.ai meeting transcripts");
+    capabilities.push("- Search and retrieve meeting summaries, action items, and keywords");
   }
 
   if (capabilities.length === 0) {

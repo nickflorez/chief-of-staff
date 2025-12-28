@@ -12,7 +12,7 @@ export default function ChangelogPage() {
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="space-y-12">
-          {/* Version 0.2.0 */}
+          {/* Version 0.3.0 */}
           <article className="relative">
             {/* Timeline connector */}
             <div className="absolute left-0 top-0 h-full w-0.5 bg-gray-200 hidden md:block" style={{ left: '1.25rem' }} />
@@ -21,17 +21,77 @@ export default function ChangelogPage() {
               {/* Timeline dot */}
               <div className="absolute left-0 top-1 w-10 h-10 bg-blue-600 rounded-full hidden md:flex items-center justify-center">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                 </svg>
               </div>
 
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                 <div className="flex flex-wrap items-center gap-3 mb-4">
                   <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold">
-                    v0.2.0
+                    v0.3.0
                   </span>
                   <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
                     Latest
+                  </span>
+                  <time className="text-gray-500 text-sm">December 27, 2025</time>
+                </div>
+
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Fireflies.ai Integration</h2>
+
+                <p className="text-gray-600 mb-6">
+                  Access your Fireflies.ai meeting transcripts directly through your assistant! Connect your Fireflies account with your API key to search, view, and analyze your meeting recordings.
+                </p>
+
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <span className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
+                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                      </span>
+                      Features
+                    </h3>
+                    <ul className="grid md:grid-cols-2 gap-2">
+                      {[
+                        "Connect with your Fireflies.ai API key",
+                        "List recent meeting transcripts",
+                        "View meeting summaries and action items",
+                        "Search transcripts by keyword",
+                        "Access meeting participants and duration",
+                        "Secure encrypted API key storage",
+                      ].map((feature, index) => (
+                        <li key={index} className="flex items-start gap-2 text-gray-600 text-sm">
+                          <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          {/* Version 0.2.0 */}
+          <article className="relative">
+            {/* Timeline connector */}
+            <div className="absolute left-0 top-0 h-full w-0.5 bg-gray-200 hidden md:block" style={{ left: '1.25rem' }} />
+
+            <div className="md:pl-12 relative">
+              {/* Timeline dot */}
+              <div className="absolute left-0 top-1 w-10 h-10 bg-gray-400 rounded-full hidden md:flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <div className="flex flex-wrap items-center gap-3 mb-4">
+                  <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-semibold">
+                    v0.2.0
                   </span>
                   <time className="text-gray-500 text-sm">December 27, 2025</time>
                 </div>

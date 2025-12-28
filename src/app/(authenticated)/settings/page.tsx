@@ -1,13 +1,14 @@
-import { getUserSettings } from "@/app/actions/settings";
+import { getUserSettings, hasFirefliesConnection } from "@/app/actions/settings";
 import { getUserIntegrations, getOAuthAvailability } from "@/app/actions/integrations";
 import { AssistantSettingsForm } from "@/components/settings/assistant-settings-form";
 import { IntegrationsList } from "@/components/settings/integrations-list";
 
 export default async function SettingsPage() {
-  const [settings, integrations, oauthAvailability] = await Promise.all([
+  const [settings, integrations, oauthAvailability, firefliesConnected] = await Promise.all([
     getUserSettings(),
     getUserIntegrations(),
     getOAuthAvailability(),
+    hasFirefliesConnection(),
   ]);
 
   const initialSettings = {
@@ -35,6 +36,7 @@ export default async function SettingsPage() {
           <IntegrationsList
             integrations={integrations}
             oauthAvailability={oauthAvailability}
+            firefliesConnected={firefliesConnected}
           />
         </div>
       </div>
