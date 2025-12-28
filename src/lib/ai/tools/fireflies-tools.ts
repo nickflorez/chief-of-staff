@@ -124,25 +124,25 @@ function formatTranscriptDetail(transcript: FirefliesTranscriptDetail): string {
 **Host:** ${transcript.host_email || "Unknown"}
 `;
 
-  if (transcript.overview) {
+  if (transcript.summary) {
     result += `
 ## Summary
-${transcript.overview}
+${transcript.summary.overview || transcript.summary.short_summary || "No summary available."}
 `;
-  }
 
-  if (transcript.action_items && transcript.action_items.length > 0) {
-    result += `
+    if (transcript.summary.action_items && transcript.summary.action_items.length > 0) {
+      result += `
 ## Action Items
-${transcript.action_items.map((item) => `- ${item}`).join("\n")}
+${transcript.summary.action_items.map((item) => `- ${item}`).join("\n")}
 `;
-  }
+    }
 
-  if (transcript.keywords && transcript.keywords.length > 0) {
-    result += `
+    if (transcript.summary.keywords && transcript.summary.keywords.length > 0) {
+      result += `
 ## Keywords
-${transcript.keywords.join(", ")}
+${transcript.summary.keywords.join(", ")}
 `;
+    }
   }
 
   // Include first part of transcript (limit to avoid token explosion)

@@ -20,11 +20,12 @@ export interface FirefliesTranscript {
 }
 
 export interface FirefliesTranscriptDetail extends FirefliesTranscript {
-  // Summary fields are directly on transcript, not nested
-  overview: string | null;
-  action_items: string[] | null;
-  keywords: string[] | null;
-  outline: string[] | null;
+  summary: {
+    overview: string | null;
+    action_items: string[] | null;
+    keywords: string[] | null;
+    short_summary: string | null;
+  } | null;
   sentences: Array<{
     speaker_name: string;
     text: string;
@@ -113,8 +114,8 @@ export async function getTranscript(
   transcriptId: string
 ): Promise<FirefliesTranscriptDetail | null> {
   const query = `
-    query Transcript($id: String!) {
-      transcript(id: $id) {
+    query Transcript($transcriptId: String!) {
+      transcript(id: $transcriptId) {
         id
         title
         date
@@ -124,10 +125,12 @@ export async function getTranscript(
         organizer_email
         transcript_url
         audio_url
-        overview
-        action_items
-        keywords
-        outline
+        summary {
+          overview
+          action_items
+          keywords
+          short_summary
+        }
         sentences {
           speaker_name
           text
@@ -140,7 +143,7 @@ export async function getTranscript(
   const data = await firefliesQuery<{ transcript: FirefliesTranscriptDetail | null }>(
     apiKey,
     query,
-    { id: transcriptId }
+    { transcriptId }
   );
 
   return data.transcript;
